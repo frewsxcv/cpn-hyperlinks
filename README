@@ -1,0 +1,5 @@
+Web interface for viewing CPNs
+
+# INSTALL #
+
+    easy_install pyshp

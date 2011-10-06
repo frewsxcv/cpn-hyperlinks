@@ -4,64 +4,57 @@ import shapefile
 
 
 def main():
+    old_sf = shapefile.Reader("data/cpn")
+    old_fields = old_sf.fields
+    old_shprec = old_sf.shapeRecords()
+    new_sf = shapefile.Writer(shapefile.POINT)
 
-    sf_old = shapefile.Reader("data/cpn")
-    fields_old = sf.fields
-    shprec_old = sf.shapeRecords()
-
-    sf_new = shapefile.Writer(shapefile.POINT)
-
-    #newfld = ['LONGITUDE', 'C', 100, 0]
-    #fields.append(newfld)
-    #newfld = ['LATITUDE', 'C', 100, 0]
-    #fields.append(newfld)
+    # fields
+    copy_fields(old_fields, new_sf)
 
     # records
-    for rec in shprec_old:
-        sf_new.point(*rec.shape.points[0])
-        sf_new.record(*rec.record)
+    for old_rec in old_shprec:
+        new_sf.point(*old_rec.shape.points[0])
+        new_sf.record(*old_rec.record)
 
-    add_fields(fields_old, sf_new)
-    add_hyperlinks(shprec_old, fields)
+    # hyperlinks
+    add_hyperlinks(old_shprec, new_sf)
 
-    # Save final shapefile
-    sf_new.save("new")
+    # save
+    new_sf.save("new")
 
 
-def add_fields(fields, sf):
+def copy_fields(old_fields, new_sf):
     '''
     Given a list of fields, copy over the fields to the given shapefile
     '''
-    ['HYPERLINK', 'C', 100, 0]
-    for fld in fields:
-        sf.field(*fld)
+    hyperlink_field = ('HYPERLINK', 'C', 100, 0)
+    for field in old_fields:
+        new_sf.field(*field)
+    if hyperlink_field not in new_sf.fields:
+        new_sf.append(hyperlink_field)
 
 
-def add_hyp_field(fields):
-    if hyp_ndx(fields) < 0:
-        fields.append(['HYPERLINK', 'C', 100, 0])
-
-
-def hyp_ndx(fields):
+def hyp_index(fields):
+    '''
+    Returns the HYPERLINK position in a field
+    '''
     for i, fld in enumerate(fields):
-        try:
-            str(fld[0])
-        except ValueError:
-            continue
         if fld[0] == 'HYPERLINK':
+            if ('DeletionFlag', 'C', 1, 0) in fields:
+                return i-1
             return i
-    return -1
 
 
-def add_hyperlinks(shprec):
-    for rec in shprec:
-        (lng, lat) = rec.shape.points[0]
+def add_hyperlinks(old_shprec, new_sf):
+    '''
+    Adds the hyperlinks to the given shapeRecord
+    '''
+    for rec in old_shprec:
+        (lng, lat) = (rec.shape.points[0])
         baseurl = "http://cfslo.no-ip.org/cpn/streetview.cgi"
         hyperlink = baseurl + "?lng=" + str(lng) + "&lat=" + str(lat)
-        try:
-            rec[hyp_ndx(fields)] = hyperlink
-        except IndexError:
-            rec.append(hyperlink)
+        rec.record[hyp_index(new_sf.fields)] = hyperlink
   
 
 main()
